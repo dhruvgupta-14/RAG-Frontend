@@ -1,6 +1,6 @@
 
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
+import { getAuth, GoogleAuthProvider} from "firebase/auth";
 
 
 const firebaseConfig = {
@@ -13,6 +13,6 @@ const firebaseConfig = {
   measurementId: "G-518QXJBED5"
 };
 
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+const app = initializeApp(firebaseConfig);//connect my app to firebase project
+export const auth = getAuth(app); // give firebase authentication instance
 export const googleProvider = new GoogleAuthProvider();

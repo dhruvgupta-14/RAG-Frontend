@@ -1,22 +1,24 @@
 import React, { useState } from "react";
-import { Sparkles, Loader2 } from "lucide-react";
+import { AiFillStar, AiOutlineLoading3Quarters } from "react-icons/ai";
 import { signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "./firebase";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
+import { useAuthState } from "react-firebase-hooks/auth";
+import Header from "./components/Header";
+import Footer from "./components/Footer";
+
 
 export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const [user] = useAuthState(auth); //It listens to Firebase Authentication state changes and gives you the current logged-in user.
 
   const loginWithGoogle = async () => {
     try {
       setIsLoading(true);
       const response = await signInWithPopup(auth, googleProvider);
-      toast.success(`Welcome back, ${response.user.displayName}!`)
-      console.log(response);
       navigate("/");
-      
     } catch (err) {
       console.error("Login failed:", err);
       toast.error("Login failed. Please try again.");
@@ -27,30 +29,13 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100">
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-md border-b border-purple-100 sticky top-0 z-10 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl shadow-lg">
-              <Sparkles className="w-6 h-6 text-white" />
-            </div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-              RAG Chatbot
-            </h1>
-            <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
-              PDF Assistant
-            </span>
-          </div>
-        </div>
-      </header>
+      <Header user={user} />
 
-      {/* Main Content */}
       <div className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="bg-white/90 backdrop-blur-sm p-8 rounded-2xl shadow-2xl max-w-md w-full border border-white/20">
-          {/* Welcome Section */}
           <div className="text-center mb-8">
             <div className="mx-auto w-16 h-16 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center mb-4 shadow-lg">
-              <Sparkles className="w-8 h-8 text-white" />
+              <AiFillStar className="w-8 h-8 text-white" />
             </div>
             <h2 className="text-3xl font-bold text-gray-800 mb-2">
               Welcome Back
@@ -60,7 +45,6 @@ export default function Login() {
             </p>
           </div>
 
-          {/* Google Sign In Button */}
           <button
             onClick={loginWithGoogle}
             disabled={isLoading}
@@ -68,7 +52,7 @@ export default function Login() {
           >
             {isLoading ? (
               <>
-                <Loader2 className="w-5 h-5 animate-spin text-purple-500" />
+                <AiOutlineLoading3Quarters className="w-5 h-5 animate-spin text-purple-500" />
                 <span className="font-medium">Signing in...</span>
               </>
             ) : (
@@ -85,7 +69,6 @@ export default function Login() {
             )}
           </button>
 
-          {/* Additional Info */}
           <div className="mt-6 text-center">
             <p className="text-xs text-gray-500">
               By signing in, you agree to our{" "}
@@ -101,26 +84,8 @@ export default function Login() {
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="bg-white/80 backdrop-blur-md border-t border-purple-100 py-6">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-2 text-gray-600">
-              <span className="text-sm">
-                © 2025 RAG Chatbot. All rights reserved.
-              </span>
-            </div>
-            <div className="flex items-center gap-2 text-gray-600">
-              <span className="text-sm">Made with</span>
-              <span className="text-red-500 text-lg animate-pulse">♥</span>
-              <span className="text-sm">by</span>
-              <span className="font-semibold text-purple-600 bg-purple-50 px-2 py-1 rounded-md">
-                Dhruv
-              </span>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
+

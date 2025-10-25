@@ -1,38 +1,55 @@
-import { useEffect, useState } from 'react'
-import RAGChatbot from './RAGChatbot'
-import toast, { Toaster } from 'react-hot-toast'
-import Login from './Login'
-import { BrowserRouter, Routes,Route, Navigate } from 'react-router-dom'
-import { onAuthStateChanged } from "firebase/auth";
-import { auth } from './firebase'
-import { Loader } from 'lucide-react'
-const App = () => {
-const [isLogin, setIsLogin] = useState(false);
-const [isLoading, setIsLoading] = useState(true);
-useEffect(() => {
-  const unsubscribe = onAuthStateChanged(auth, (user) => {
-    setIsLogin(!!user);
-    setIsLoading(false);
+// App.jsx
+import React, { useEffect } from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Toaster, toast } from "react-hot-toast";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { auth } from "./firebase";
+import Login from "./Login";
+import RAGChatbot from "./RAGChatbot";
+import { AiOutlineLoading3Quarters } from "react-icons/ai"; 
 
+const App = () => {
+  const [user, loading, error] = useAuthState(auth);
+
+  useEffect(() => {
     if (user) {
       toast.success(`Welcome back, ${user.displayName}!`);
     }
-  });
+  }, [user]);
 
-  return () => unsubscribe();
-}, []);
-  if (isLoading) return <div className="w-screen h-screen flex items-center justify-center"><Loader className="animate-spin" size={40}></Loader></div>
+  if (loading) {
+    return (
+      <div className="w-screen h-screen flex items-center justify-center">
+        <AiOutlineLoading3Quarters className="animate-spin" size={40} />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="w-screen h-screen flex items-center justify-center text-red-500">
+        Error: {error.message}
+      </div>
+    );
+  }
+
   return (
     <div>
-      <Toaster position='top-center'/>
+      <Toaster position="top-center" />
       <BrowserRouter>
         <Routes>
-          <Route path='/' element={isLogin ? <RAGChatbot/> : <Navigate to="/login" />} />
-          <Route path='/login' element={isLogin ? <Navigate to="/" /> : <Login />} />
+          <Route
+            path="/"
+            element={user ? <RAGChatbot /> : <Navigate to="/login" />}
+          />
+          <Route
+            path="/login"
+            element={user ? <Navigate to="/" /> : <Login />}
+          />
         </Routes>
       </BrowserRouter>
     </div>
-  )
-}
+  );
+};
 
-export default App
+export default App;
