@@ -1,63 +1,67 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { auth } from "../firebase";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { AiOutlineSend } from "react-icons/ai";
 
+const sanitizeNamespace = (name) => name.replace(/[^a-zA-Z0-9_-]/g, "_");
+
 const InputChatSection = ({
   uploadedFile,
   isLoading,
   setIsLoading,
-  setMessages
+  setMessages,
 }) => {
+  const API_URL = import.meta.env.VITE_API_URL;
   const [inputMessage, setInputMessage] = useState("");
+
   const handleKeyPress = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
     }
   };
+
   const sendMessage = async () => {
     if (!inputMessage.trim() || !uploadedFile) return;
-    try {
-      const userMessage = {
-        id: Date.now(),
-        type: "user",
-        content: inputMessage,
-      };
-      setMessages((prev) => [...prev, userMessage]);
-      setInputMessage("");
-      setIsLoading(true);
 
+    const userMessage = {
+      id: Date.now(),
+      type: "user",
+      content: inputMessage,
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setInputMessage("");
+    setIsLoading(true);
+
+    try {
       const token = await auth.currentUser.getIdToken();
       const response = await axios.post(
-        "http://localhost:3000/ask/ai",
+        `${API_URL}/ask/ai`,
         {
           query: inputMessage,
-          namespace: uploadedFile.name,
+          namespace: sanitizeNamespace(uploadedFile.name), 
         },
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         }
       );
 
       const botResponse = {
         id: Date.now() + 1,
-        type: "bot",
-        content:
-          response.data.answer ||
-          "No answer found. Please try rephrasing your question.",
+        type: "ai",  
+        content: response.data.answer || "No answer found. Please try rephrasing.",
       };
       setMessages((prev) => [...prev, botResponse]);
-      setIsLoading(false);
     } catch (error) {
       console.error("Error sending message:", error);
       toast.error("Failed to send message. Please try again.");
-      setIsLoading(false);
+    } finally {
+      setIsLoading(false); // ← moved to finally, always runs ✅
     }
   };
+
   return (
     <div className="p-4 border-t border-purple-100 bg-white/50">
       <div className="flex gap-3">
@@ -67,8 +71,8 @@ const InputChatSection = ({
           onKeyDown={handleKeyPress}
           placeholder={
             uploadedFile
-              ? "Ask a question about your PDF..."
-              : "Upload a PDF first to start chatting"
+              ? "Ask a question about your document..."
+              : "Upload a document first to start chatting"
           }
           disabled={!uploadedFile || isLoading}
           className="flex-1 resize-none border border-purple-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed bg-white/80"

@@ -3,14 +3,15 @@ import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider} from "firebase/auth";
 
 
+
 const firebaseConfig = {
-  apiKey: "AIzaSyCWn2jBwYL1IiUspEBApg-OlIiId5EUWEk",
-  authDomain: "rag-chatbot-bb847.firebaseapp.com",
-  projectId: "rag-chatbot-bb847",
-  storageBucket: "rag-chatbot-bb847.firebasestorage.app",
-  messagingSenderId: "44277370456",
-  appId: "1:44277370456:web:1524175e35c2087e51442d",
-  measurementId: "G-518QXJBED5"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
 const app = initializeApp(firebaseConfig);//connect my app to firebase project

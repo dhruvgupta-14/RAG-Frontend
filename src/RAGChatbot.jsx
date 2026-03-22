@@ -18,28 +18,48 @@ const RAGChatbot = () => {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
   const [user] = useAuthState(auth);
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
 
+  // Auto scroll when messages change
+useEffect(() => {
+  if (messages.length > 0) {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }
+}, [messages]);
+
+  // Load chat history from Firestore on mount
   useEffect(() => {
-    if (uploadedFile) scrollToBottom();
-  }, [messages, uploadedFile]);
+    const loadHistory = async () => {
+      try {
+        const token = await auth.currentUser.getIdToken();
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/ask/history`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        const formatted = data.messages.map((msg, i) => ({
+          id: i,
+          type: msg.role === "human" ? "user" : "ai",
+          content: msg.content,
+        }));
+        setMessages(formatted);
+      } catch (err) {
+        console.error("Failed to load history:", err);
+      }
+    };
+    if (user) loadHistory();
+  }, [user]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100">
-      {/* Header */}
       <Header user={user} />
 
       <div className="max-w-6xl mx-auto px-4 py-6">
         <div className="grid lg:grid-cols-3 items-center gap-6">
-          {/* File Upload Section */}
           <FileUploadSection
             uploadedFile={uploadedFile}
             setUploadedFile={setUploadedFile}
             setMessages={setMessages}
           />
-          {/* Chat Section */}
+
           <div className="lg:col-span-2">
             <div className="bg-white/70 backdrop-blur-sm rounded-2xl border border-purple-100 shadow-lg h-[600px] flex flex-col">
               {/* Chat Header */}
@@ -49,13 +69,9 @@ const RAGChatbot = () => {
                     <AiOutlineRobot className="w-5 h-5 text-purple-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-800">
-                      AI Assistant
-                    </h3>
+                    <h3 className="font-semibold text-gray-800">AI Assistant</h3>
                     <p className="text-sm text-gray-500">
-                      {uploadedFile
-                        ? "Ready to answer questions"
-                        : "Upload a PDF to start chatting"}
+                      {uploadedFile ? "Ready to answer questions" : "Upload a file to start chatting"}
                     </p>
                   </div>
                 </div>
@@ -72,8 +88,7 @@ const RAGChatbot = () => {
                       Welcome to RAG Chatbot
                     </h3>
                     <p className="text-gray-500 max-w-md">
-                      Upload a PDF document to start asking questions and get
-                      intelligent answers based on your content.
+                      Upload a PDF, DOCX, or TXT document to start asking questions.
                     </p>
                   </div>
                 )}
@@ -86,13 +101,11 @@ const RAGChatbot = () => {
                     }`}
                   >
                     {message.type !== "user" && (
-                      <div
-                        className={`flex gap-1 p-2 rounded-xl ${
-                          message.type === "system"
-                            ? "bg-yellow-100"
-                            : "bg-gradient-to-r from-purple-500 to-blue-500"
-                        }`}
-                      >
+                      <div className={`flex gap-1 p-2 rounded-xl ${
+                        message.type === "system"
+                          ? "bg-yellow-100"
+                          : "bg-gradient-to-r from-purple-500 to-blue-500"
+                      }`}>
                         {message.type === "system" ? (
                           <AiOutlineFileText className="w-4 h-4 text-yellow-600" />
                         ) : (
@@ -101,18 +114,14 @@ const RAGChatbot = () => {
                       </div>
                     )}
 
-                    <div
-                      className={`max-w-md p-3 rounded-2xl ${
-                        message.type === "user"
-                          ? "bg-gradient-to-r from-purple-500 to-blue-500 text-white"
-                          : message.type === "system"
-                          ? "bg-yellow-50 text-yellow-800 border border-yellow-200"
-                          : "bg-gray-50 text-gray-800 border border-gray-200"
-                      }`}
-                    >
-                      <p className="text-sm whitespace-pre-wrap">
-                        {message.content}
-                      </p>
+                    <div className={`max-w-md p-3 rounded-2xl ${
+                      message.type === "user"
+                        ? "bg-gradient-to-r from-purple-500 to-blue-500 text-white"
+                        : message.type === "system"
+                        ? "bg-yellow-50 text-yellow-800 border border-yellow-200"
+                        : "bg-gray-50 text-gray-800 border border-gray-200"
+                    }`}>
+                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                     </div>
 
                     {message.type === "user" && (
@@ -131,14 +140,8 @@ const RAGChatbot = () => {
                     <div className="bg-gray-50 border border-gray-200 p-3 rounded-2xl">
                       <div className="flex gap-1">
                         <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></div>
-                        <div
-                          className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"
-                          style={{ animationDelay: "0.1s" }}
-                        ></div>
-                        <div
-                          className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"
-                          style={{ animationDelay: "0.2s" }}
-                        ></div>
+                        <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></div>
+                        <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
                       </div>
                     </div>
                   </div>

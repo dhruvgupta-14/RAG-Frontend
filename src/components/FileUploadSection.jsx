@@ -1,6 +1,4 @@
-import axios from "axios";
-import React, { useEffect, useRef } from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AiOutlineDelete,
   AiOutlineFileText,
@@ -10,17 +8,36 @@ import {
 } from "react-icons/ai";
 import { auth } from "../firebase";
 import toast from "react-hot-toast";
+import axios from "axios";
+
+const sanitizeNamespace = (name) => name.replace(/[^a-zA-Z0-9_-]/g, "_");
+
+
+const ALLOWED_TYPES = [
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "text/plain",
+];
+const MAX_SIZE = 40 * 1024 * 1024; // 40MB
 
 const FileUploadSection = ({ uploadedFile, setUploadedFile, setMessages }) => {
   const API_URL = import.meta.env.VITE_API_URL;
   const [uploadLoading, setUploadLoading] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef(null);
+
+  // Restore file from localStorage on mount
+  useEffect(() => {
+    const savedFile = localStorage.getItem("uploadedFile");
+    if (savedFile) {
+      setUploadedFile(JSON.parse(savedFile));
+    }
+  }, []);
+
   const handleDrop = (e) => {
     e.preventDefault();
     setIsDragOver(false);
-    const file = e.dataTransfer.files[0];
-    handleFileUpload(file);
+    handleFileUpload(e.dataTransfer.files[0]);
   };
 
   const handleDragOver = (e) => {
@@ -28,96 +45,75 @@ const FileUploadSection = ({ uploadedFile, setUploadedFile, setMessages }) => {
     setIsDragOver(true);
   };
 
-  const handleDragLeave = () => {
-    setIsDragOver(false);
-  };
-  const removeFile = async () => {
+  const handleDragLeave = () => setIsDragOver(false);
+
+const removeFile = async () => {
+  try {
     const token = await auth.currentUser.getIdToken();
-    try {
-      const response = await axios.delete(
-        `${API_URL}/file/delete/${uploadedFile.name}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-      toast.success("File deleted Successfully");
-      setUploadedFile(null);
-      setMessages([]);
-      localStorage.removeItem("uploadedFile");
-    } catch (e) {
-      console.log(e);
-      toast.error("Something went wrong,try again!");
-    }
-  };
+    await axios.delete(`${API_URL}/file/delete/${sanitizeNamespace(uploadedFile.name)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    toast.success("File deleted successfully");
+  } catch (e) {
+    console.error(e);
+    toast.success("File removed");  
+  } finally {
+    setUploadedFile(null);
+    setMessages([]);
+    localStorage.removeItem("uploadedFile");
+  }
+};
+
   const handleFileUpload = async (file) => {
-    if (
-      file &&
-      file.type === "application/pdf" &&
-      file.size <= 40 * 1024 * 1024
-    ) {
-      setUploadLoading(true);
-      setIsDragOver(false);
-      try {
-        const token = await auth.currentUser.getIdToken();
-        const formData = new FormData();
-        formData.append("file", file);
-        const response = await axios.post(`${API_URL}/file/upload`, formData, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        });
-        toast.success(response.data.message || "File uploaded successfully!");
-        setMessages([
-          {
-            id: Date.now(),
-            type: "system",
-            content: `PDF "${file.name}" uploaded successfully! You can now ask questions about its content.`,
-          },
-        ]);
-        setUploadedFile(file);
-        localStorage.setItem(
-          "uploadedFile",
-          JSON.stringify({
-            name: file.name,
-            size: file.size,
-            type: file.type,
-          })
-        );
-        setUploadLoading(false);
-      } catch (error) {
-        console.error("Error uploading file:", error);
-        toast.error("Failed to upload file. Please try again.");
-        setUploadedFile(null);
-        setUploadLoading(false);
-      }
-    } else {
-      toast.error("Invalid file. Please upload a PDF file smaller than 40MB.");
+    if (!file || !ALLOWED_TYPES.includes(file.type) || file.size > MAX_SIZE) {
+      toast.error("Invalid file. Upload a PDF, DOCX, or TXT under 40MB.");
+      return;
     }
-  };
-  useEffect(() => {
-  const savedFile = localStorage.getItem("uploadedFile");
-  if (savedFile) {
-    setUploadedFile(JSON.parse(savedFile));
-    setMessages([
-      {
+
+    setUploadLoading(true);
+    setIsDragOver(false);
+
+    try {
+      const token = await auth.currentUser.getIdToken();
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await axios.post(`${API_URL}/file/upload`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      toast.success(response.data.message || "File uploaded successfully!");
+      setUploadedFile(file);
+      localStorage.setItem("uploadedFile", JSON.stringify({
+        name: file.name,
+        size: file.size,
+        type: file.type,
+      }));
+      setMessages([{
         id: Date.now(),
         type: "system",
-        content: `Restored PDF "${JSON.parse(savedFile).name}". You can continue asking questions.`,
-      },
-    ]);
-  }
-}, []);
+        content: `"${file.name}" uploaded! You can now ask questions about its content.`,
+      }]);
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      toast.error("Failed to upload file. Please try again.");
+      setUploadedFile(null);
+    } finally {
+      setUploadLoading(false);
+    }
+  };
+
   return (
     <div className="lg:col-span-1">
       <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-6 border border-purple-100 shadow-lg">
         <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
           <AiOutlineUpload className="w-5 h-5 text-purple-600" />
-          Upload PDF
+          Upload Document
         </h2>
+
         {uploadLoading ? (
           <div className="w-full h-full flex items-center justify-center">
             <AiOutlineLoading3Quarters className="animate-spin" size={40} />
@@ -148,26 +144,23 @@ const FileUploadSection = ({ uploadedFile, setUploadedFile, setMessages }) => {
           </div>
         ) : (
           <div
-            className={`border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer
-                        ${
-                          isDragOver
-                            ? "border-purple-400 bg-purple-50"
-                            : "border-purple-200 hover:border-purple-300 hover:bg-purple-25"
-                        }`}
+            className={`border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer ${
+              isDragOver
+                ? "border-purple-400 bg-purple-50"
+                : "border-purple-200 hover:border-purple-300 hover:bg-purple-25"
+            }`}
             onDrop={handleDrop}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onClick={() => fileInputRef.current?.click()}
           >
             <AiOutlineFileText className="w-12 h-12 text-purple-400 mx-auto mb-4" />
-            <p className="text-gray-600 mb-2">
-              Drop your PDF here or click to browse
-            </p>
-            <p className="text-sm text-gray-400">Max size: 40MB</p>
+            <p className="text-gray-600 mb-2">Drop your file here or click to browse</p>
+            <p className="text-sm text-gray-400">PDF, DOCX, TXT • Max 40MB</p>
             <input
               ref={fileInputRef}
               type="file"
-              accept=".pdf"
+              accept=".pdf,.docx,.txt"
               className="hidden"
               onChange={(e) => handleFileUpload(e.target.files[0])}
             />
@@ -180,9 +173,7 @@ const FileUploadSection = ({ uploadedFile, setUploadedFile, setMessages }) => {
               <AiOutlineMessage className="w-4 h-4" />
               Quick Start
             </h3>
-            <p className="text-sm text-blue-600 mb-3">
-              Your PDF is ready! Try asking questions like:
-            </p>
+            <p className="text-sm text-blue-600 mb-3">Try asking:</p>
             <ul className="text-xs text-blue-500 space-y-1">
               <li>• "Summarize the main points"</li>
               <li>• "What is this document about?"</li>
