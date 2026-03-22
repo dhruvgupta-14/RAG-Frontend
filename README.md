@@ -5,8 +5,7 @@ A modern, responsive React frontend for the **RAG (Retrieval-Augmented Generatio
 ---
 
 ## 🚀 Live Demo
-
-- **Frontend**: [Coming Soon — deploy on Vercel]
+- **Frontend**:(https://rag-frontend-bay.vercel.app/login)
 - **Backend API**: https://rag-backend-n2rm.onrender.com
 
 ---
